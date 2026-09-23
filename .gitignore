@@ -9,3 +9,6 @@ frontend/.venv/
 backend/.qdrant/
 .vite/
 .claude/
+frontend/.env
+frontend/.env.local
+.vercel/

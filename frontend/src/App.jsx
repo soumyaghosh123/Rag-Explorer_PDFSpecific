@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowUpRight, BrainCircuit, ChevronDown, FileText, Gauge, Layers3, MessageSquare, Search, Send, Upload, Zap } from 'lucide-react';
 
-const API = 'http://localhost:8000/api';
+const API = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api`;
 
 const PIPELINE_STAGES = [
   { title: '1. Extract', detail: 'pypdf · per page' },

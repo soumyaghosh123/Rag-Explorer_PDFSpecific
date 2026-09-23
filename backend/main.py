@@ -28,10 +28,13 @@ DEFAULT_CHUNK_SIZE = 180
 DEFAULT_CHUNK_OVERLAP = 40
 COLLECTION_NAME = "rag_explorer_chunks"
 
+DEFAULT_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"]
+EXTRA_ORIGINS = [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "").split(",") if origin.strip()]
+
 app = FastAPI(title="RAG Explorer API")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=DEFAULT_ORIGINS + EXTRA_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
