@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+dist/
+.env
+backend/.venv/
+frontend/.venv/
+backend/.qdrant/
+.vite/
+.claude/
