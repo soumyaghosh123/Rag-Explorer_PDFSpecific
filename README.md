@@ -1,12 +1,14 @@
 # RAG Explorer
 
-A lightweight, local Retrieval-Augmented Generation (RAG) demo that ingests a PDF, chunks it, embeds it, stores it in a vector database, and lets you search/chat against it with an LLM.
+A lightweight, local Retrieval-Augmented Generation (RAG) demo that ingests one or more PDFs, chunks them, embeds them, stores them in a vector database, and lets you search/chat against the combined knowledge base with an LLM.
 
 ## Architecture
 
 ```
-PDF -> extract -> normalise -> chunk -> embed -> vector store -> (search) -> LLM -> answer
+PDF(s) -> extract -> normalise -> chunk -> embed -> vector store -> (search) -> LLM -> answer
 ```
+
+Multiple PDFs are merged into a single searchable index — a question can pull relevant chunks from any uploaded document at once, with citations showing which document + page each chunk came from. Documents can be added or removed individually via the Ingest & Chunks tab.
 
 ## Components & Technology
 

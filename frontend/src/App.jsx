@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowUpRight, BrainCircuit, ChevronDown, FileText, Gauge, Layers3, MessageSquare, Search, Send, Upload, Zap } from 'lucide-react';
+import { ArrowUpRight, BrainCircuit, ChevronDown, FileText, Gauge, Layers3, MessageSquare, Search, Send, Trash2, Upload, Zap } from 'lucide-react';
 
 const API = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api`;
 
@@ -97,18 +97,35 @@ export default function App() {
   }
 
   async function ingest(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setNotice('Reading PDF, splitting chunks, and building the index...');
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+    event.target.value = '';
+    setNotice(files.length > 1 ? `Reading ${files.length} PDFs, splitting chunks, and building the index...` : 'Reading PDF, splitting chunks, and building the index...');
     setBusy(true);
     const body = new FormData();
-    body.append('file', file);
+    files.forEach((file) => body.append('files', file));
     try {
       const response = await fetch(`${API}/ingest?chunk_size=${chunkSize}&chunk_overlap=${chunkOverlap}`, { method: 'POST', body });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || 'Ingestion failed');
       await loadData();
-      setNotice(`${data.document} is indexed and ready.`);
+      setNotice(`${data.document_count} document(s) indexed, ${data.chunks} chunks total.`);
+    } catch (error) {
+      setNotice(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeDocument(name) {
+    setBusy(true);
+    setNotice(`Removing ${name}...`);
+    try {
+      const response = await fetch(`${API}/documents/${encodeURIComponent(name)}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Could not remove document');
+      await loadData();
+      setNotice(`${name} removed. ${data.document_count} document(s) remaining.`);
     } catch (error) {
       setNotice(error.message);
     } finally {
@@ -148,11 +165,11 @@ export default function App() {
           <span className="badge">{stats?.generation_model || 'openai/gpt-oss-120b'}</span>
           <span className="badge">qdrant</span>
         </div>
-        <label className="upload-button"><Upload size={16} /> replace PDF<input type="file" accept="application/pdf" onChange={ingest} /></label>
+        <label className="upload-button"><Upload size={16} /> add PDF(s)<input type="file" accept="application/pdf" multiple onChange={ingest} /></label>
       </section>
 
       <section className="stats-grid">
-        <Metric icon={<FileText />} label="source document" value={stats?.document || 'waiting...'} detail={stats ? `${stats.pages} pages indexed` : 'connect API'} />
+        <Metric icon={<FileText />} label="source documents" value={stats?.document || 'waiting...'} detail={stats ? `${stats.pages} pages indexed` : 'connect API'} />
         <Metric icon={<Layers3 />} label="knowledge chunks" value={stats?.chunks ?? '--'} detail={stats ? `${stats.chunk_size_words} words / ${stats.chunk_overlap_words} overlap` : 'not indexed'} />
         <Metric icon={<Gauge />} label="vector space" value={stats?.embedding_dimensions ? `${stats.embedding_dimensions}D` : '--'} detail={stats?.embedding_model?.split('/').pop() || 'embedding model'} />
         <Metric icon={<BrainCircuit />} label="generation" value="GPT-120B" detail={stats?.generation_model || 'Groq'} />
@@ -169,7 +186,20 @@ export default function App() {
       {tab === 'ingest' && (
         <section className="ingest-section">
           <div className="panel-heading"><div><span className="section-kicker">ingest</span><h2>Ingest the PDF</h2></div></div>
-          <p className="section-desc">Five stages turn a PDF into something searchable. Change the chunk settings and re-run to watch the trade-off move.</p>
+          <p className="section-desc">Five stages turn a PDF into something searchable. Upload one or more PDFs — they're merged into a single searchable index. Change the chunk settings and re-run to watch the trade-off move.</p>
+
+          {stats?.documents?.length > 0 && (
+            <div className="documents-list">
+              {stats.documents.map((doc) => (
+                <div className="document-chip" key={doc.name}>
+                  <FileText size={13} />
+                  <span>{doc.name}</span>
+                  <small>{doc.pages}p</small>
+                  <button onClick={() => removeDocument(doc.name)} disabled={busy} title={`Remove ${doc.name}`}><Trash2 size={13} /></button>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="pipeline-row">
             {PIPELINE_STAGES.map((stage) => (
@@ -194,10 +224,10 @@ export default function App() {
           <button className="primary-button" onClick={reindex} disabled={busy}>{busy ? 'ingesting...' : 'Ingest PDF'}</button>
 
           <div className="chunks-table">
-            <div className="table-head"><span>chunk</span><span>page</span><span>size</span><span>preview</span><span /></div>
+            <div className="table-head"><span>chunk</span><span>document</span><span>page</span><span>size</span><span>preview</span><span /></div>
             {chunks.slice(0, 12).map((chunk) => (
               <details key={chunk.id} className="chunk-row">
-                <summary><span>#{String(chunk.id).padStart(2, '0')}</span><span>{chunk.page}</span><span>{chunk.word_count} words</span><span>{chunk.text.slice(0, 105)}...</span><ChevronDown size={16} /></summary>
+                <summary><span>#{String(chunk.id).padStart(2, '0')}</span><span className="chunk-doc-name" title={chunk.document}>{chunk.document}</span><span>{chunk.page}</span><span>{chunk.word_count} words</span><span>{chunk.text.slice(0, 105)}...</span><ChevronDown size={16} /></summary>
                 <div className="chunk-detail">
                   <ChunkText chunk={chunk} />
                   <div className="chunk-overlap-legend">
@@ -236,7 +266,7 @@ export default function App() {
               <div className="results-list">
                 {results.map((result, index) => (
                   <article className="result" key={result.id}>
-                    <div className="result-top"><span className="rank">0{index + 1}</span><span className="chunk-id">chunk_{String(result.id).padStart(2, '0')} / p.{result.page}</span><span className="score">{scoreLabel(result.score)}</span></div>
+                    <div className="result-top"><span className="rank">0{index + 1}</span><span className="chunk-id">chunk_{String(result.id).padStart(2, '0')} / {result.document} / p.{result.page}</span><span className="score">{scoreLabel(result.score)}</span></div>
                     <p>{result.text}</p>
                     <div className="result-footer"><span>{result.word_count} words</span><span>score {result.score.toFixed(4)}</span></div>
                   </article>
@@ -319,7 +349,7 @@ function CitationChips({ ids, sources }) {
     <span className="citation-chips">
       {ids.map((id, index) => {
         const source = sourceLookup.get(String(id));
-        return <span key={`${id}-${index}`} className="citation-chip">chunk {id}{source ? ` · p.${source.page}` : ''}</span>;
+        return <span key={`${id}-${index}`} className="citation-chip">chunk {id}{source ? ` · ${source.document} · p.${source.page}` : ''}</span>;
       })}
     </span>
   );
