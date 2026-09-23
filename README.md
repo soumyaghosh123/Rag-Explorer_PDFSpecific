@@ -27,7 +27,7 @@ Runs at `http://localhost:5173`.
 | Web framework | FastAPI |
 | ASGI server | Uvicorn |
 | PDF text extraction | pypdf |
-| Embedding model | `sentence-transformers` running `sentence-transformers/all-MiniLM-L6-v2` (384-dim, local, open-source, no API calls, ~90MB — chosen to fit free-tier hosting RAM limits) |
+| Embedding model | `fastembed` (ONNX runtime, no PyTorch) running `sentence-transformers/all-MiniLM-L6-v2` (384-dim, local, open-source, no API calls, ~200MB total runtime footprint — chosen to fit free-tier hosting RAM limits) |
 | Vector database | Qdrant (`qdrant-client`, embedded/local mode — no separate server needed) |
 | LLM (answer generation) | `openai/gpt-oss-120b` served via the Groq API (`GROQ_API_KEY` from `.env`) |
 | Config / secrets | `python-dotenv` (reads `.env` at project root) |

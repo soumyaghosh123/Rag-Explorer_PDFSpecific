@@ -13,9 +13,9 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from pypdf import PdfReader
+from fastembed import TextEmbedding
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
-from sentence_transformers import SentenceTransformer
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
@@ -58,7 +58,7 @@ class RagStore:
         self.chunks: list[dict[str, Any]] = []
         self.chunk_size = DEFAULT_CHUNK_SIZE
         self.chunk_overlap = DEFAULT_CHUNK_OVERLAP
-        self.embedder: SentenceTransformer | None = None
+        self.embedder: TextEmbedding | None = None
         self.embedding_status = "not loaded"
         self.embedding_dimensions = 0
         self.pdf_path: Path | None = None
@@ -83,18 +83,15 @@ class RagStore:
     def load_embedder(self) -> None:
         if self.embedder is not None:
             return
-        self.embedder = SentenceTransformer(EMBEDDING_MODEL_NAME, trust_remote_code=True)
-        self.embedding_dimensions = self.embedder.get_sentence_embedding_dimension()
+        self.embedder = TextEmbedding(model_name=EMBEDDING_MODEL_NAME)
+        sample = next(self.embedder.embed(["dimension probe"]))
+        self.embedding_dimensions = len(sample)
         self.embedding_status = "loaded"
 
     def embed(self, texts: list[str], prefix: str) -> np.ndarray:
         self.load_embedder()
-        # nomic-embed-text models are trained with these instruction prefixes; other
-        # models (e.g. all-MiniLM-L6-v2) don't expect them and would rank worse with them.
-        if "nomic" in EMBEDDING_MODEL_NAME.lower():
-            texts = [f"{prefix}: {text}" for text in texts]
-        vectors = self.embedder.encode(texts, normalize_embeddings=True)
-        return np.asarray(vectors, dtype=np.float32)
+        vectors = np.array(list(self.embedder.embed(texts)), dtype=np.float32)
+        return vectors
 
     def ingest(self, pdf_path: Path | None, chunk_size: int, chunk_overlap: int) -> dict[str, Any]:
         if not pdf_path or not pdf_path.exists():
