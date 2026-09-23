@@ -7,7 +7,7 @@ const PIPELINE_STAGES = [
   { title: '1. Extract', detail: 'pypdf · per page' },
   { title: '2. Normalise', detail: 'repair the text' },
   { title: '3. Chunk', detail: null },
-  { title: '4. Embed', detail: 'nomic · 768d · local' },
+  { title: '4. Embed', detail: 'MiniLM · 384d · local' },
   { title: '5. Store', detail: 'qdrant · cosine' },
 ];
 
@@ -144,7 +144,7 @@ export default function App() {
         <h1>See how a question<br /><em>travels through</em> a PDF.</h1>
         <p className="lede">RAG Explorer &middot; PDF &rarr; chunks &rarr; vectors &rarr; answers</p>
         <div className="model-badges">
-          <span className="badge">{stats?.embedding_model?.split('/').pop() || 'nomic-embed-text'}</span>
+          <span className="badge">{stats?.embedding_model?.split('/').pop() || 'all-MiniLM-L6-v2'}</span>
           <span className="badge">{stats?.generation_model || 'openai/gpt-oss-120b'}</span>
           <span className="badge">qdrant</span>
         </div>

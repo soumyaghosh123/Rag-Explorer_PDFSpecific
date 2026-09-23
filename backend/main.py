@@ -21,7 +21,7 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PDF = next(ROOT.glob("*.pdf"), None)
-EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL", "nomic-ai/nomic-embed-text-v1.5")
+EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 GENERATION_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 QDRANT_DIR = ROOT / "backend" / ".qdrant"
 DEFAULT_CHUNK_SIZE = 180
@@ -89,8 +89,11 @@ class RagStore:
 
     def embed(self, texts: list[str], prefix: str) -> np.ndarray:
         self.load_embedder()
-        prefixed = [f"{prefix}: {text}" for text in texts]
-        vectors = self.embedder.encode(prefixed, normalize_embeddings=True)
+        # nomic-embed-text models are trained with these instruction prefixes; other
+        # models (e.g. all-MiniLM-L6-v2) don't expect them and would rank worse with them.
+        if "nomic" in EMBEDDING_MODEL_NAME.lower():
+            texts = [f"{prefix}: {text}" for text in texts]
+        vectors = self.embedder.encode(texts, normalize_embeddings=True)
         return np.asarray(vectors, dtype=np.float32)
 
     def ingest(self, pdf_path: Path | None, chunk_size: int, chunk_overlap: int) -> dict[str, Any]:

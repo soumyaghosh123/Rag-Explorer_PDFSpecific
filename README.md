@@ -27,7 +27,7 @@ Runs at `http://localhost:5173`.
 | Web framework | FastAPI |
 | ASGI server | Uvicorn |
 | PDF text extraction | pypdf |
-| Embedding model | `sentence-transformers` running `nomic-ai/nomic-embed-text-v1.5` (768-dim, local, open-source, no API calls) |
+| Embedding model | `sentence-transformers` running `sentence-transformers/all-MiniLM-L6-v2` (384-dim, local, open-source, no API calls, ~90MB — chosen to fit free-tier hosting RAM limits) |
 | Vector database | Qdrant (`qdrant-client`, embedded/local mode — no separate server needed) |
 | LLM (answer generation) | `openai/gpt-oss-120b` served via the Groq API (`GROQ_API_KEY` from `.env`) |
 | Config / secrets | `python-dotenv` (reads `.env` at project root) |
@@ -44,7 +44,7 @@ Runs at `http://localhost:8000`.
 | Storage location | `backend/.qdrant/` (created automatically on first run) |
 | Collection name | `rag_explorer_chunks` |
 | Distance metric | Cosine similarity |
-| Vector size | 768 (matches the nomic-embed-text-v1.5 output dimension) |
+| Vector size | 384 (matches the all-MiniLM-L6-v2 output dimension) |
 | Point ID | Same as the chunk id (integer) |
 | Point payload | `page` (source PDF page number), `word_count` (chunk size) |
 | Lifecycle | Collection is dropped and recreated on every ingest/reindex, so it always reflects the current PDF + chunk settings |
@@ -53,11 +53,11 @@ Runs at `http://localhost:8000`.
 1. **Extract** — pypdf, per page
 2. **Normalise** — whitespace/text repair via regex
 3. **Chunk** — sliding window over words (configurable size/overlap via UI sliders)
-4. **Embed** — nomic-embed-text-v1.5, 768 dimensions, computed locally on CPU
+4. **Embed** — all-MiniLM-L6-v2, 384 dimensions, computed locally on CPU
 5. **Store** — Qdrant collection with cosine similarity
 
 ### Data flow per query
-1. Query text -> embedded with the same nomic model (`search_query` prefix)
+1. Query text -> embedded with the same embedding model
 2. Top-k nearest chunks retrieved from Qdrant (cosine similarity)
 3. Retrieved chunks + question -> prompt sent to `openai/gpt-oss-120b` on Groq
 4. LLM's grounded, chunk-cited answer returned to the UI along with token usage and per-stage timing (embed/search/LLM ms)
@@ -66,7 +66,7 @@ Runs at `http://localhost:8000`.
 
 **Backend (`.env` locally, or host env vars in production):**
 - `GROQ_API_KEY` — required for LLM answer generation
-- `EMBEDDING_MODEL` — optional override (defaults to `nomic-ai/nomic-embed-text-v1.5`)
+- `EMBEDDING_MODEL` — optional override (defaults to `sentence-transformers/all-MiniLM-L6-v2`; note nomic-family models need >512MB RAM and won't fit Render's free tier)
 - `GROQ_MODEL` — optional override (defaults to `openai/gpt-oss-120b`)
 - `ALLOWED_ORIGINS` — comma-separated extra CORS origins (e.g. your deployed Vercel URL)
 
@@ -100,7 +100,7 @@ The backend (FastAPI + local ML model + embedded Qdrant) needs a host with a rea
 3. In the Render dashboard, set the environment variables it prompts for:
    - `GROQ_API_KEY` — your Groq key
    - `ALLOWED_ORIGINS` — your Vercel frontend URL once you have it (e.g. `https://rag-explorer.vercel.app`)
-4. Deploy. First boot will be slow (~1-2 min) since it downloads the nomic embedding model on startup; free-tier services also spin down after 15 minutes idle and cold-start on the next request.
+4. Deploy. First boot takes a bit since it downloads the embedding model on startup; free-tier services also spin down after 15 minutes idle and cold-start on the next request.
 
 **Frontend on Vercel:**
 1. From the `frontend/` directory, run `vercel` (or `vercel --prod`) and follow the prompts.
