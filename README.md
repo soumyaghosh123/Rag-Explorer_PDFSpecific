@@ -2,6 +2,8 @@
 
 A lightweight, local Retrieval-Augmented Generation (RAG) demo that ingests one or more PDFs, chunks them, embeds them, stores them in a vector database, and lets you search/chat against the combined knowledge base with an LLM.
 
+**Live app:** https://frontend-snowy-rho-26.vercel.app/
+
 ## Architecture
 
 ```
